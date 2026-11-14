@@ -1,0 +1,19 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+
+/*
+ * The Zero2 supplies the common RK3528 NanoPi power tree, MMC, UART0,
+ * RTL8211F reset line and ethernet0 alias. The kernel FIT carries its own DTB.
+ */
+#include "rk3528-nanopi-zero2.dts"
+
+/ {
+	model = "FriendlyElec NanoPi NEO3 Plus";
+	compatible = "friendlyarm,nanopi-neo3-plus", "rockchip,rk3528";
+	/delete-node/ adc-keys-1;
+};
+
+&gmac1 {
+	/* Board-specific RGMII timings from the FriendlyElec NEO3 Plus DTS. */
+	phy-mode = "rgmii-rxid";
+	tx_delay = <0x30>;
+};

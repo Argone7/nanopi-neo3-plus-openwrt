@@ -1,0 +1,249 @@
+diff --git a/target/linux/rockchip/patches-6.12/185-arm64-dts-rockchip-add-nanopi-neo3-plus.patch b/target/linux/rockchip/patches-6.12/185-arm64-dts-rockchip-add-nanopi-neo3-plus.patch
+new file mode 100644
+--- /dev/null
++++ b/target/linux/rockchip/patches-6.12/185-arm64-dts-rockchip-add-nanopi-neo3-plus.patch
+@@ -0,0 +1,244 @@
++Subject: [PATCH] arm64: dts: rockchip: add FriendlyElec NanoPi NEO3 Plus
++
++Describe the microSD slot, UART0, Gigabit Ethernet PHY and GPIO
++controls on the NanoPi NEO3 Plus. Use the RK3528 SoC nodes already
++available through the OpenWrt Rockchip backports.
++
++Hardware references are the FriendlyElec rev2601 schematic, the vendor
++rk3528-nanopi-rev02 DTS and Armbian's NanoPi NEO3 Plus DTS.
++
++--- a/arch/arm64/boot/dts/rockchip/Makefile
+++++ b/arch/arm64/boot/dts/rockchip/Makefile
++@@ -77,6 +77,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-sapphire.dtb
++ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399-sapphire-excavator.dtb
++ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3399pro-rock-pi-n10.dtb
++ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-hinlink-h28k.dtb
+++dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-nanopi-neo3-plus.dtb
++ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-radxa-e20c.dtb
++ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-rock-2a.dtb
++ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3528-rock-2f.dtb
++--- /dev/null
+++++ b/arch/arm64/boot/dts/rockchip/rk3528-nanopi-neo3-plus.dts
++@@ -0,0 +1,222 @@
+++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+++
+++/dts-v1/;
+++
+++#include <dt-bindings/gpio/gpio.h>
+++#include <dt-bindings/input/input.h>
+++#include <dt-bindings/leds/common.h>
+++#include <dt-bindings/pwm/pwm.h>
+++
+++#include "rk3528.dtsi"
+++
+++/ {
+++	model = "FriendlyElec NanoPi NEO3 Plus";
+++	compatible = "friendlyarm,nanopi-neo3-plus", "rockchip,rk3528";
+++
+++	aliases {
+++		ethernet0 = &gmac1;
+++		led-boot = &sys_led;
+++		led-failsafe = &sys_led;
+++		led-running = &user_led;
+++		led-upgrade = &sys_led;
+++		mmc0 = &sdmmc;
+++		serial0 = &uart0;
+++	};
+++
+++	chosen {
+++		stdout-path = "serial0:1500000n8";
+++	};
+++
+++	gpio-keys {
+++		compatible = "gpio-keys";
+++		pinctrl-0 = <&user_button_pin>;
+++		pinctrl-names = "default";
+++
+++		button-user {
+++			gpios = <&gpio4 RK_PB2 GPIO_ACTIVE_LOW>;
+++			label = "USER";
+++			linux,code = <BTN_1>;
+++		};
+++	};
+++
+++	leds {
+++		compatible = "gpio-leds";
+++		pinctrl-0 = <&led_pins>;
+++		pinctrl-names = "default";
+++
+++		sys_led: led-0 {
+++			color = <LED_COLOR_ID_RED>;
+++			function = LED_FUNCTION_STATUS;
+++			gpios = <&gpio4 RK_PB0 GPIO_ACTIVE_HIGH>;
+++		};
+++
+++		user_led: led-1 {
+++			color = <LED_COLOR_ID_GREEN>;
+++			function = LED_FUNCTION_STATUS;
+++			gpios = <&gpio4 RK_PB1 GPIO_ACTIVE_HIGH>;
+++		};
+++	};
+++
+++	vcc_3v3: regulator-vcc-3v3 {
+++		compatible = "regulator-fixed";
+++		regulator-name = "vcc_3v3";
+++		regulator-always-on;
+++		regulator-boot-on;
+++		regulator-min-microvolt = <3300000>;
+++		regulator-max-microvolt = <3300000>;
+++		vin-supply = <&vcc5v0_sys>;
+++	};
+++
+++	vcc3v3_sd: regulator-vcc3v3-sd {
+++		compatible = "regulator-fixed";
+++		gpio = <&gpio4 RK_PA1 GPIO_ACTIVE_LOW>;
+++		pinctrl-0 = <&sd_power_pin>;
+++		pinctrl-names = "default";
+++		regulator-name = "vcc3v3_sd";
+++		regulator-boot-on;
+++		regulator-min-microvolt = <3300000>;
+++		regulator-max-microvolt = <3300000>;
+++		vin-supply = <&vcc_3v3>;
+++	};
+++
+++	vcc5v0_sys: regulator-vcc5v0-sys {
+++		compatible = "regulator-fixed";
+++		regulator-name = "vcc5v0_sys";
+++		regulator-always-on;
+++		regulator-boot-on;
+++		regulator-min-microvolt = <5000000>;
+++		regulator-max-microvolt = <5000000>;
+++	};
+++
+++	vccio_sd: regulator-vccio-sd {
+++		compatible = "regulator-gpio";
+++		gpios = <&gpio4 RK_PB6 GPIO_ACTIVE_HIGH>;
+++		gpios-states = <1>;
+++		pinctrl-0 = <&sd_voltage_pin>;
+++		pinctrl-names = "default";
+++		regulator-name = "vccio_sd";
+++		regulator-min-microvolt = <1800000>;
+++		regulator-max-microvolt = <3300000>;
+++		states = <1800000 0>, <3300000 1>;
+++		vin-supply = <&vcc5v0_sys>;
+++	};
+++
+++	vdd_arm: regulator-vdd-arm {
+++		compatible = "pwm-regulator";
+++		pwms = <&pwm1 0 5000 PWM_POLARITY_INVERTED>;
+++		pwm-supply = <&vcc5v0_sys>;
+++		regulator-name = "vdd_arm";
+++		regulator-always-on;
+++		regulator-boot-on;
+++		regulator-min-microvolt = <746000>;
+++		regulator-max-microvolt = <1201000>;
+++		regulator-settling-time-up-us = <250>;
+++	};
+++};
+++
+++&cpu0 {
+++	cpu-supply = <&vdd_arm>;
+++};
+++
+++&cpu1 {
+++	cpu-supply = <&vdd_arm>;
+++};
+++
+++&cpu2 {
+++	cpu-supply = <&vdd_arm>;
+++};
+++
+++&cpu3 {
+++	cpu-supply = <&vdd_arm>;
+++};
+++
+++&cpu_opp_table {
+++	/* FriendlyElec rates the RK3528A on this board at up to 1.8 GHz. */
+++	/delete-node/ opp-2016000000;
+++};
+++
+++&gmac1 {
+++	clock_in_out = "output";
+++	phy-handle = <&rtl8211f>;
+++	phy-mode = "rgmii-id";
+++	phy-supply = <&vcc_3v3>;
+++	pinctrl-0 = <&rgmii_miim>, <&rgmii_tx_bus2>, <&rgmii_rx_bus2>,
+++		    <&rgmii_rgmii_clk>, <&rgmii_rgmii_bus>, <&phy_reset_pin>;
+++	pinctrl-names = "default";
+++
+++	status = "okay";
+++};
+++
+++&mdio1 {
+++	reset-gpios = <&gpio4 RK_PC2 GPIO_ACTIVE_LOW>;
+++	reset-delay-us = <20000>;
+++	reset-post-delay-us = <100000>;
+++
+++	rtl8211f: ethernet-phy@1 {
+++		compatible = "ethernet-phy-ieee802.3-c22";
+++		reg = <1>;
+++	};
+++};
+++
+++&pinctrl {
+++	ethernet {
+++		phy_reset_pin: phy-reset-pin {
+++			rockchip,pins = <4 RK_PC2 RK_FUNC_GPIO &pcfg_pull_none>;
+++		};
+++	};
+++
+++	keys {
+++		user_button_pin: user-button-pin {
+++			rockchip,pins = <4 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>;
+++		};
+++	};
+++
+++	leds {
+++		led_pins: led-pins {
+++			rockchip,pins = <4 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>,
+++					<4 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
+++		};
+++	};
+++
+++	sdmmc {
+++		sd_power_pin: sd-power-pin {
+++			rockchip,pins = <4 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
+++		};
+++
+++		sd_voltage_pin: sd-voltage-pin {
+++			rockchip,pins = <4 RK_PB6 RK_FUNC_GPIO &pcfg_pull_none>;
+++		};
+++	};
+++};
+++
+++&pwm1 {
+++	pinctrl-0 = <&pwm1m0_pins>;
+++	pinctrl-names = "default";
+++
+++	status = "okay";
+++};
+++
+++&sdmmc {
+++	bus-width = <4>;
+++	cap-sd-highspeed;
+++	disable-wp;
+++	max-frequency = <50000000>;
+++	no-1-8-v;
+++	no-mmc;
+++	no-sdio;
+++	vmmc-supply = <&vcc3v3_sd>;
+++	vqmmc-supply = <&vccio_sd>;
+++
+++	status = "okay";
+++};
+++
+++&tsadc {
+++	status = "okay";
+++};
+++
+++&uart0 {
+++	pinctrl-0 = <&uart0m0_xfer>;
+++	pinctrl-names = "default";
+++
+++	status = "okay";
+++};

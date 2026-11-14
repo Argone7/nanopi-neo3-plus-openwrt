@@ -1,0 +1,4 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+
+/* Reuse the SPL storage boot order and NanoPi regulator initialization. */
+#include "rk3528-nanopi-zero2-u-boot.dtsi"

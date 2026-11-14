@@ -1,0 +1,114 @@
+name: Build NanoPi NEO3 Plus firmware
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  uboot:
+    name: Build RK3528 U-Boot
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install U-Boot build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison build-essential curl device-tree-compiler flex \
+            gcc-aarch64-linux-gnu git libgnutls28-dev libssl-dev pkg-config \
+            python3 python3-dev python3-pyelftools python3-setuptools swig zstd
+
+      - name: Build U-Boot
+        env:
+          UBOOT_BUILD_DIR: ${{ runner.temp }}/uboot
+        run: bash scripts/build-uboot.sh "$GITHUB_WORKSPACE/out/uboot"
+
+      - name: Verify U-Boot output
+        working-directory: out/uboot
+        run: |
+          test -s u-boot-rockchip.bin
+          sha256sum --check --strict SHA256SUMS
+
+      - name: Upload bootloader
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nanopi-neo3-plus-uboot-${{ github.run_attempt }}
+          path: out/uboot/
+          if-no-files-found: error
+          retention-days: 14
+
+  firmware:
+    name: Build OpenWrt 25.12.6
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    needs: uboot
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Free disk space on the hosted runner
+        run: |
+          # A full toolchain build needs space occupied by the runner's Android, .NET and Haskell SDKs.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
+          df -h "$RUNNER_TEMP"
+
+      - name: Install OpenWrt build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison build-essential clang curl file flex gawk gettext git \
+            libelf-dev libncurses-dev libssl-dev patch pkgconf python3 python3-dev \
+            python3-setuptools rsync swig time unzip wget xsltproc zlib1g-dev zstd
+          sudo apt-get clean
+
+      - name: Download bootloader from this build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.uboot.outputs.artifact-id }}
+          path: out/uboot
+          merge-multiple: true
+
+      - name: Verify downloaded bootloader
+        working-directory: out/uboot
+        run: |
+          test -s u-boot-rockchip.bin
+          sha256sum --check --strict SHA256SUMS
+
+      - name: Build OpenWrt image
+        env:
+          OPENWRT_BUILD_DIR: ${{ runner.temp }}/openwrt
+        run: |
+          bash scripts/build-openwrt.sh \
+            "$GITHUB_WORKSPACE/out/uboot/u-boot-rockchip.bin" \
+            "$GITHUB_WORKSPACE/out/firmware"
+
+      - name: Verify firmware output
+        working-directory: out/firmware
+        run: |
+          sha256sum --check --strict SHA256SUMS
+          gzip -t -- *-squashfs-sd.img.gz
+
+      - name: Upload SD image and build metadata
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: nanopi-neo3-plus-openwrt-25.12.6-${{ github.run_attempt }}
+          path: out/firmware/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
