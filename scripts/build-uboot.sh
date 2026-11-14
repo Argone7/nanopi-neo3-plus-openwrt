@@ -58,6 +58,8 @@ make -C "$source_dir" "${make_args[@]}" nanopi-zero2-rk3528_defconfig
 "$source_dir/scripts/config" --file "$source_dir/.config" \
     --set-str DEFAULT_DEVICE_TREE "rockchip/$board_dts" \
     --set-str DEFAULT_FDT_FILE "rockchip/$board_dts.dtb" \
+    --set-str OF_LIST "rockchip/$board_dts" \
+    --set-str SPL_OF_LIST "rockchip/$board_dts" \
     --enable BOOTSTD_FULL --enable BOOTSTD_DEFAULTS --enable BOOTMETH_SCRIPT \
     --enable LEGACY_IMAGE_FORMAT \
     --enable USE_BOOTCOMMAND --set-str BOOTCOMMAND 'bootflow scan -lb' \
@@ -72,6 +74,12 @@ for option in BOOTSTD_FULL BOOTMETH_SCRIPT LEGACY_IMAGE_FORMAT USE_BOOTCOMMAND \
     CMD_BOOTFLOW_FULL ENV_VARS_UBOOT_CONFIG MISC_INIT_R ROCKCHIP_OTP HASH SHA256 ENV_IS_NOWHERE; do
     if ! grep -qx "CONFIG_$option=y" "$source_dir/.config"; then
         echo "Missing required U-Boot option CONFIG_$option" >&2
+        exit 1
+    fi
+done
+for option in DEFAULT_DEVICE_TREE OF_LIST SPL_OF_LIST; do
+    if ! grep -Fxq "CONFIG_$option=\"rockchip/$board_dts\"" "$source_dir/.config"; then
+        echo "U-Boot option CONFIG_$option must use the NEO3 Plus device tree" >&2
         exit 1
     fi
 done
