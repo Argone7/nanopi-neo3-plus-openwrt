@@ -15,7 +15,7 @@ jobs=${BUILD_JOBS:-$(nproc)}
 openwrt_tag=v25.12.6
 openwrt_commit=64900e756efa667774214f9c6b17c113222e01f7
 device=friendlyarm_nanopi-neo3-plus
-image_name=openwrt-${openwrt_tag#v}-rockchip-armv8-${device}-squashfs-sd.img.gz
+image_name=openwrt-${openwrt_tag#v}-rockchip-armv8-${device}-ext4-sd.img.gz
 
 if [[ $(uname -s) != Linux || $EUID == 0 ]]; then
     echo 'Build OpenWrt as a non-root user on Linux.' >&2
@@ -50,12 +50,16 @@ cp -- "$repo_dir/config/openwrt-25.12.6.config" .config
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 make defconfig
-for option in "TARGET_rockchip_armv8_DEVICE_$device" TARGET_ROOTFS_SQUASHFS VERSION_FILENAMES PACKAGE_ethtool; do
+for option in "TARGET_rockchip_armv8_DEVICE_$device" TARGET_ROOTFS_EXT4FS VERSION_FILENAMES PACKAGE_ethtool; do
     if ! grep -qx "CONFIG_$option=y" .config; then
         echo "Missing required OpenWrt option CONFIG_$option" >&2
         exit 1
     fi
 done
+if grep -qx 'CONFIG_TARGET_ROOTFS_SQUASHFS=y' .config; then
+    echo 'The OpenWrt SD build must use ext4 only.' >&2
+    exit 1
+fi
 
 make -j"$jobs" download
 make -j"$jobs" V=s
@@ -95,13 +99,16 @@ with gzip.open(sys.argv[1], "rb") as image:
     if image.read(len(loader)) != loader:
         raise SystemExit("U-Boot artifact does not match the image at LBA 64")
 
-    image.seek(boot_lba * sector_size + 1024 + 56)
-    if image.read(2) != b"\x53\xef":
-        raise SystemExit("The boot partition does not contain ext4")
-
-    image.seek(root_lba * sector_size)
-    if image.read(4) != b"hsqs":
-        raise SystemExit("The root partition does not contain squashfs")
+    for label, lba in (("boot", boot_lba), ("root", root_lba)):
+        image.seek(lba * sector_size + 1024)
+        superblock = image.read(1024)
+        # Verify the filesystem magic and the ext4 extents feature.
+        if (
+            len(superblock) != 1024
+            or superblock[0x38:0x3A] != b"\x53\xef"
+            or not (struct.unpack_from("<I", superblock, 0x60)[0] & 0x40)
+        ):
+            raise SystemExit(f"The {label} partition does not contain ext4")
 PY
 
 mkdir -p -- "$output_dir"

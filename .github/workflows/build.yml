@@ -102,12 +102,12 @@ jobs:
         working-directory: out/firmware
         run: |
           sha256sum --check --strict SHA256SUMS
-          gzip -t -- *-squashfs-sd.img.gz
+          gzip -t -- *-ext4-sd.img.gz
 
       - name: Upload SD image and build metadata
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: nanopi-neo3-plus-openwrt-25.12.6-${{ github.run_attempt }}
+          name: nanopi-neo3-plus-openwrt-25.12.6-ext4-${{ github.run_attempt }}
           path: out/firmware/
           if-no-files-found: error
           retention-days: 14

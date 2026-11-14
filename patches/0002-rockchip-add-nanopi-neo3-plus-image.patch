@@ -13,7 +13,7 @@ diff --git a/target/linux/rockchip/image/Makefile b/target/linux/rockchip/image/
 diff --git a/target/linux/rockchip/image/armv8.mk b/target/linux/rockchip/image/armv8.mk
 --- a/target/linux/rockchip/image/armv8.mk
 +++ b/target/linux/rockchip/image/armv8.mk
-@@ -87,6 +87,16 @@
+@@ -87,6 +87,17 @@
    DEVICE_PACKAGES := kmod-r8169
  endef
  TARGET_DEVICES += friendlyarm_nanopc-t6
@@ -23,6 +23,7 @@ diff --git a/target/linux/rockchip/image/armv8.mk b/target/linux/rockchip/image/
 +  DEVICE_VENDOR := FriendlyElec
 +  DEVICE_MODEL := NanoPi NEO3 Plus
 +  DEVICE_PACKAGES := ethtool
++  FILESYSTEMS := ext4
 +  IMAGES := sd.img.gz
 +  IMAGE/sd.img.gz = boot-common | boot-script | pine64-img $(TOPDIR)/.nanopi-neo3-plus-u-boot-rockchip.bin | gzip
 +endef
